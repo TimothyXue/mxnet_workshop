@@ -2,6 +2,7 @@ from bokeh.plotting import output_notebook, figure, ColumnDataSource, show
 from bokeh.io import push_notebook
 from timeit import default_timer
 import math
+from collections import deque
 
 class CostVisCallback(object):
     """
@@ -10,7 +11,7 @@ class CostVisCallback(object):
 
     def __init__(self, epoch_freq=1, y_range=(0, 4.5), fig=None, handle=None,
                  update_thresh_s=0.65, w=400, h=300, nepochs=1.0, total_batches=10.0,
-                 train_source=None, val_source=None):
+                 train_source=None, val_source=None, history=10):
 
         self.update_thresh_s = update_thresh_s
         self.w = w
@@ -18,7 +19,9 @@ class CostVisCallback(object):
         self.nepochs = nepochs
         self.total = total_batches
         self.last_update = 0
-        self.epoch = 0
+        self.epoch = -1
+        self.history = history
+        self.cost_history = deque(maxlen=history)
         
         if handle is None:
             output_notebook()
@@ -48,20 +51,29 @@ class CostVisCallback(object):
 
         self.val_cost = self.fig.line('x', 'y', source=self.val_source, color='red')
  
+    def get_average_cost(self, cost):
+        self.cost_history.append(cost)
+        return sum(list(self.cost_history))/ float(len(self.cost_history))
+        
     def __call__(self, param):
         if self.handle is None:
             self.handle = show(self.fig, notebook_handle=True)
    
         now = default_timer()
-            
-        time = float(param.nbatch) / self.total + self.epoch
-        if param.nbatch == self.total:
+ 
+        if param.nbatch == 0:
             self.epoch = self.epoch + 1
-            
+
+        time = float(param.nbatch) / self.total + self.epoch
+
         if param.eval_metric is not None:
             name_value = param.eval_metric.get_name_value()
             param.eval_metric.reset()
-            cost = name_value[0][1]
+            cost = self.get_average_cost(name_value[0][1])
+            
+            if math.isnan(cost) or cost > 4000:
+                cost = 4000
+                
             self.train_source.data['x'].append(time)
             self.train_source.data['y'].append(cost)
         
