@@ -21,26 +21,23 @@ def getpallete(num_cls):
             lab >>= 3
     return pallete
 
-def get_results(exector,pallete,img,seg):
-    tic = time.time()
-    exector.forward(is_train=False)
-    print "Time taken for forward pass: {:.3f} milli sec".format((time.time()-tic)*1000)
+def print_images(output, img_path):
+    seg_path = img_path.replace("jpg", "png")
 
-    print "Postprocessing results to display output..."
-    output = exector.outputs[0]
     out_img = np.uint8(np.squeeze(output.asnumpy().argmax(axis=1)))
     out_img = Image.fromarray(out_img)
-    out_img.putpalette(pallete)
-    out_img.save(seg)
+    out_img.putpalette(getpallete(256))
+    out_img.save(seg_path)
 
     # Display input
     print "Input Image:"
-    img_in = mpimg.imread(img)
-    imgplot = plt.imshow(img_in)
+    img = mpimg.imread(img_path)
+    plt.imshow(img)
     plt.show()
 
     # Display output
     print "Output Image:"
-    img_out = mpimg.imread(seg)
-    imgplot = plt.imshow(img_out)
+    img_out = mpimg.imread(seg_path)
+    plt.imshow(img_out)
     plt.show()
+    
