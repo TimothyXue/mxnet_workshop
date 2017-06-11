@@ -67,11 +67,12 @@ class CostVisCallback(object):
             self.handle = show(self.fig, notebook_handle=True)
    
         now = default_timer()
- 
+        # print "{}_{}".format(param.nbatch, param.epoch)
+        
         if param.nbatch == 0:
             self.epoch = self.epoch + 1
 
-        time = float(param.nbatch) / self.total + self.epoch
+        time = float(param.nbatch) / self.total + param.epoch
 
         if param.eval_metric is not None:
             name_value = param.eval_metric.get_name_value()
@@ -89,7 +90,7 @@ class CostVisCallback(object):
                 self.train_source.data['x'].append(time)
                 self.train_source.data['y'].append(cost)
             elif name == 'eval':
-                self.val_source.data['x'].append(self.epoch+1)
+                self.val_source.data['x'].append(param.epoch+1)
                 self.val_source.data['y'].append(cost)               
 
             if (now - self.last_update > self.update_thresh_s):

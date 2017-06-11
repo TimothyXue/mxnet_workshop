@@ -31,50 +31,51 @@ def get_iterators():
 
     return (train_set, valid_set)
 
-
-def Conv(data, num_filter, kernel=(3, 3), pad=(1, 1)):
-    net = mx.symbol.Convolution(data=data, num_filter=num_filter, kernel=kernel, pad=pad)
-    net = mx.symbol.Activation(data=net, act_type="relu")
-    return net
-
 def build_model():
     data = mx.symbol.Variable(name="data")
     label = mx.sym.Variable('softmax_label')
-        
-    net = Conv(data=data, num_filter=32)
-    net = Conv(data=net, num_filter=32)
-    net = mx.symbol.Pooling(data=net, pool_type="max", kernel=(2, 2), stride=(2,2))
-    net = mx.symbol.Dropout(data=net, p=0.5)
+    
+    convp = dict(kernel=(3, 3), pad=(1, 1))
+    bnp = dict(momentum=0.9, eps=1e-3)
+    
+    conv1_1 = mx.symbol.Convolution(data=data, num_filter=32, name="conv1_1", **convp)
+    bn1_1 = mx.symbol.BatchNorm(data=conv1_1, name="bn1_1", **bnp)
+    relu1_1 = mx.symbol.Activation(data=bn1_1, act_type="relu", name="relu1_1")
+    
+    conv1_2 = mx.symbol.Convolution(data=relu1_1, num_filter=32, name="conv1_2", **convp)
+    bn1_2 = mx.symbol.BatchNorm(data=conv1_2, name="bn1_2", **bnp)
+    relu1_2 = mx.symbol.Activation(data=bn1_2, act_type="relu", name="relu1_2")
+    
+    pool1 = mx.symbol.Pooling(data=relu1_2, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool1")
+    dropout1 = mx.symbol.Dropout(data=pool1, p=0.5,name="dropout1")
 
-    net = Conv(data=net, num_filter=64)
-    net = Conv(data=net, num_filter=64)
-    net = mx.symbol.Pooling(data=net, pool_type="max", kernel=(2, 2), stride=(2,2))
-    net = mx.symbol.Dropout(data=net, p=0.5)
+    conv2_1 = mx.symbol.Convolution(data=dropout1, num_filter=64, name="conv2_1", **convp)
+    bn2_1 = mx.symbol.BatchNorm(data=conv2_1, name="bn2_1", **bnp)
+    relu2_1 = mx.symbol.Activation(data=bn2_1, act_type="relu", name="relu2_1")
+    
+    conv2_2 = mx.symbol.Convolution(data=relu2_1, num_filter=64, name="conv2_2", **convp)
+    bn2_2 = mx.symbol.BatchNorm(data=conv2_2, name="bn2_2", **bnp)
+    relu2_2 = mx.symbol.Activation(data=bn2_2, act_type="relu", name="relu2_2")
+    
+    pool2 = mx.symbol.Pooling(data=relu2_2, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool2")
+    dropout2 = mx.symbol.Dropout(data=pool2, p=0.5,name="dropout2")
 
-    net = Conv(data=net, num_filter=128)
-    net = Conv(data=net, num_filter=128)
-    net = mx.symbol.Pooling(data=net, pool_type="max", kernel=(2, 2), stride=(2,2))
-    net = mx.symbol.Dropout(data=net, p=0.5)
+    conv3_1 = mx.symbol.Convolution(data=dropout2,  num_filter=128, name="conv3_1", **convp)
+    bn3_1 = mx.symbol.BatchNorm(data=conv3_1, name="bn3_1", **bnp)
+    relu3_1 = mx.symbol.Activation(data=bn3_1, act_type="relu", name="relu3_1")
     
-    net = mx.symbol.Reshape(data=net, shape=(128, -1))
+    conv3_2 = mx.symbol.Convolution(data=relu3_1, num_filter=128, name="conv3_2", **convp)
+    bn3_2 = mx.symbol.BatchNorm(data=conv3_2, name="bn3_2", **bnp)    
+    relu3_2 = mx.symbol.Activation(data=bn3_2, act_type="relu", name="relu3_2")
     
-    net = mx.symbol.FullyConnected(data=net ,num_hidden=4, name='linear1')
+    flatten = mx.symbol.Flatten(data = relu3_2, name = "flatten")
+    linear1 = mx.symbol.FullyConnected(data= flatten ,num_hidden=4, name='linear1')
+    pred = mx.sym.LinearRegressionOutput(data=linear1, label=label, name='lro')
     
-    pred = mx.sym.LinearRegressionOutput(data=net, label=label, name='lro')
-    
-    model = mx.mod.Module(pred, context=mx.cpu(0))
-    return model
+    #model = mx.mod.Module(pred, context=mx.cpu(0))
+    return pred
 
 
-def score(model, data, metric):
-    
-    for batch in data:
-        model.forward(batch, is_train=False)
-        model.update_metric(metric, batch.label)
-        num += batch_size
-    return model
-    
-        
 def train_model(learning_inputs,
                 fig=None, handle=None, train_source=None, val_source=None):
     mx.random.seed(0)
@@ -82,7 +83,7 @@ def train_model(learning_inputs,
     
     train_set, test_set = get_iterators()
 
-    model = build_model()
+    pred = build_model()
     
     learning_rates = [10**(-1 * (10-f)) for f in learning_inputs]
  
@@ -90,30 +91,30 @@ def train_model(learning_inputs,
 
     lr_schedule = StepScheduler(base_lr, steps=[0, 52, 104, 156], learning_rates=learning_rates)
     
-    optimizer = mx.optimizer.SGD(learning_rate=base_lr, momentum=0.9, lr_scheduler=lr_schedule)
+    opt_args = dict(learning_rate=base_lr, momentum=0.9, lr_scheduler=lr_schedule)
     
-    model.fit(
-        train_data          = train_set,
+    # optimizer = mx.optimizer.SGD(**opt_args)
+    model = mx.model.FeedForward(pred, ctx=mx.cpu(0), num_epoch=4, optimizer='sgd', initializer=mx.init.Normal(sigma=0.01),
+                                 **opt_args)
+                                
+    model.fit( 
+        X          = train_set,
         eval_data           = test_set,
         eval_metric         = mx.metric.MSE(),
-        optimizer           = 'sgd',
-        optimizer_params    = {'learning_rate': base_lr, 'momentum': 0.9, 'lr_scheduler': lr_schedule},
-        initializer         = mx.init.Normal(sigma=0.01),
-        num_epoch           = 4,
-        batch_end_callback  = callbacks['train_cost'],
-        eval_end_callback   = callbacks['eval_cost'])
+        batch_end_callback  = [callbacks['train_cost']],
+        eval_end_callback   = [callbacks['eval_cost']])
     
     metric = model.score(test_set, mx.metric.MSE())
     
     test_set.reset()
-    y = model.predict(test_set, 1).asnumpy().T
-  
-    X = test_set.getdata()[0].asnumpy().reshape(128, -1).T
-    T = test_set.getlabel()[0].asnumpy().T
+    (y, X, T)  = model.predict(test_set, num_batch=1, return_data=True)
+    X = X.reshape(128, -1).T
+    T = T.T
+    
     
     result = {'img': X, 'pred': y, 'gt': T}
  
-    return (metric[0][1], result)
+    return (metric, result)
 
 
 class Dashboard():
