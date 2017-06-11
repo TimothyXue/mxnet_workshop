@@ -36,45 +36,32 @@ def build_model():
     label = mx.sym.Variable('softmax_label')
     
     convp = dict(kernel=(3, 3), pad=(1, 1))
-    bnp = dict(momentum=0.9, eps=1e-3)
     
     conv1_1 = mx.symbol.Convolution(data=data, num_filter=32, name="conv1_1", **convp)
-    bn1_1 = mx.symbol.BatchNorm(data=conv1_1, name="bn1_1", **bnp)
-    relu1_1 = mx.symbol.Activation(data=bn1_1, act_type="relu", name="relu1_1")
-    
+    relu1_1 = mx.symbol.Activation(data=conv1_1, act_type="relu", name="relu1_1")
     conv1_2 = mx.symbol.Convolution(data=relu1_1, num_filter=32, name="conv1_2", **convp)
-    bn1_2 = mx.symbol.BatchNorm(data=conv1_2, name="bn1_2", **bnp)
-    relu1_2 = mx.symbol.Activation(data=bn1_2, act_type="relu", name="relu1_2")
-    
+    relu1_2 = mx.symbol.Activation(data=conv1_2, act_type="relu", name="relu1_2")
     pool1 = mx.symbol.Pooling(data=relu1_2, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool1")
     dropout1 = mx.symbol.Dropout(data=pool1, p=0.5,name="dropout1")
 
     conv2_1 = mx.symbol.Convolution(data=dropout1, num_filter=64, name="conv2_1", **convp)
-    bn2_1 = mx.symbol.BatchNorm(data=conv2_1, name="bn2_1", **bnp)
-    relu2_1 = mx.symbol.Activation(data=bn2_1, act_type="relu", name="relu2_1")
-    
+    relu2_1 = mx.symbol.Activation(data=conv2_1, act_type="relu", name="relu2_1")
     conv2_2 = mx.symbol.Convolution(data=relu2_1, num_filter=64, name="conv2_2", **convp)
-    bn2_2 = mx.symbol.BatchNorm(data=conv2_2, name="bn2_2", **bnp)
-    relu2_2 = mx.symbol.Activation(data=bn2_2, act_type="relu", name="relu2_2")
-    
+    relu2_2 = mx.symbol.Activation(data=conv2_2, act_type="relu", name="relu2_2")
     pool2 = mx.symbol.Pooling(data=relu2_2, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool2")
     dropout2 = mx.symbol.Dropout(data=pool2, p=0.5,name="dropout2")
 
     conv3_1 = mx.symbol.Convolution(data=dropout2,  num_filter=128, name="conv3_1", **convp)
-    bn3_1 = mx.symbol.BatchNorm(data=conv3_1, name="bn3_1", **bnp)
-    relu3_1 = mx.symbol.Activation(data=bn3_1, act_type="relu", name="relu3_1")
-    
+    relu3_1 = mx.symbol.Activation(data=conv3_1, act_type="relu", name="relu3_1")
     conv3_2 = mx.symbol.Convolution(data=relu3_1, num_filter=128, name="conv3_2", **convp)
-    bn3_2 = mx.symbol.BatchNorm(data=conv3_2, name="bn3_2", **bnp)    
-    relu3_2 = mx.symbol.Activation(data=bn3_2, act_type="relu", name="relu3_2")
-    
+    relu3_2 = mx.symbol.Activation(data=conv3_2, act_type="relu", name="relu3_2")
     flatten = mx.symbol.Flatten(data = relu3_2, name = "flatten")
+    
     linear1 = mx.symbol.FullyConnected(data= flatten ,num_hidden=4, name='linear1')
     pred = mx.sym.LinearRegressionOutput(data=linear1, label=label, name='lro')
     
-    #model = mx.mod.Module(pred, context=mx.cpu(0))
+    # model = mx.mod.Module(pred, context=mx.cpu(0))
     return pred
-
 
 def train_model(learning_inputs,
                 fig=None, handle=None, train_source=None, val_source=None):
@@ -110,8 +97,8 @@ def train_model(learning_inputs,
     (y, X, T)  = model.predict(test_set, num_batch=1, return_data=True)
     X = X.reshape(128, -1).T
     T = T.T
-    
-    
+    y = y.T
+    bob
     result = {'img': X, 'pred': y, 'gt': T}
  
     return (metric, result)
