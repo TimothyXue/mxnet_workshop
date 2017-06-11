@@ -98,7 +98,7 @@ def train_model(learning_inputs,
     X = X.reshape(128, -1).T
     T = T.T
     y = y.T
-    bob
+
     result = {'img': X, 'pred': y, 'gt': T}
  
     return (metric, result)
