@@ -54,8 +54,15 @@ class CostVisCallback(object):
     def get_average_cost(self, cost):
         self.cost_history.append(cost)
         return sum(list(self.cost_history))/ float(len(self.cost_history))
+
+    
+    def train_callback(self, param):
+        self._process_batch(param, 'train')
+         
+    def eval_callback(self, param):
+        self._process_batch(param, 'eval')
         
-    def __call__(self, param):
+    def _process_batch(self, param, name):
         if self.handle is None:
             self.handle = show(self.fig, notebook_handle=True)
    
@@ -69,22 +76,33 @@ class CostVisCallback(object):
         if param.eval_metric is not None:
             name_value = param.eval_metric.get_name_value()
             param.eval_metric.reset()
-            cost = self.get_average_cost(name_value[0][1])
             
+            cost = name_value[0][1]
+
+            if name == 'train':
+                cost = self.get_average_cost(cost)
+
             if math.isnan(cost) or cost > 4000:
                 cost = 4000
-                
-            self.train_source.data['x'].append(time)
-            self.train_source.data['y'].append(cost)
-        
-        if (now - self.last_update > self.update_thresh_s):
-            self.last_update = now
-            
-            if self.handle is not None:
-                push_notebook(handle=self.handle)
-            else:
-                push_notebook()
 
+            if name == 'train':
+                self.train_source.data['x'].append(time)
+                self.train_source.data['y'].append(cost)
+            elif name == 'eval':
+                self.val_source.data['x'].append(self.epoch+1)
+                self.val_source.data['y'].append(cost)               
+
+            if (now - self.last_update > self.update_thresh_s):
+                self.last_update = now
+
+                if self.handle is not None:
+                    push_notebook(handle=self.handle)
+                else:
+                    push_notebook()
+                    
+    def get_callbacks(self):
+        return {'train_cost': self.train_callback,
+                'eval_cost': self.eval_callback}
             
 # def on_epoch_begin(self, callback_data, model, epoch):
 #         """

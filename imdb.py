@@ -28,7 +28,7 @@ class IMDB(object):
 def text_window():
 
     text = widgets.Textarea(
-    value="""This movie was a well-written story of Intel's history, from its highs to its lows. I especially liked the character development. They should have gotten Brad Pitt to play Robert Noyce though, the actor's acting was bad. For example, that scene where they left Fairchild to start Intel was way too exaggerated and melodramatic. The pace of the movie was exciting enough to overlook those minor issues. I was on the edge of my seat the whole time, and my brother was equally enthralled!""",
+    value="""This movie was a well-written story of Intel's history, from its highs to its lows. I especially liked the character development. They should have gotten Brad Pitt to play Robert Noyce though, the actor's acting was bad. For example, that scene where they left Fairchild to start Intel was way too exaggerated and melodramatic. The pace of the movie was exciting enough to overlook those issues.""",
     placeholder='Type something',
     description='Review:',
     disabled=False,
